@@ -1,0 +1,136 @@
+use new_york
+
+//creation d'un index sur la collection subways
+db.subways.createIndex({"geometry":"2dsphere"});
+
+
+
+
+db.getCollection('parks').stats().count //il y a 2008 parcs en base
+
+//creation de l'index des parks (astuce pour supprimer ceux au format invalide)
+db.parks.renameCollection('p')
+db.parks.insert(db.p.findOne()) // recreate the collection
+db.parks.createIndex({geometry:"2dsphere"}) // create the index (assumes the geometry on the record is valid)
+db.parks.remove({}) // remove the record
+db.p.find().forEach(function(x){
+    db.parks.insert(x);
+})
+db.p.drop()
+
+db.getCollection('parks').stats().count //8 parcs au format invalide ont été supprimés
+
+
+
+
+
+//creation de l'index des blocs de recensement, certains ont un format invalide
+db.getCollection('censusBlocks').stats().count //38794
+
+db.censusBlocks.renameCollection('cb')
+db.censusBlocks.insert(db.cb.findOne()) // recreate the collection
+db.censusBlocks.createIndex({geometry:"2dsphere"}) // create the index (assumes the geometry on the record is valid)
+db.censusBlocks.remove({}) // remove the record
+db.cb.find().forEach(function(x){
+    db.censusBlocks.insert(x);
+})
+db.cb.drop()//delete the copy of the database
+
+db.getCollection('censusBlocks').stats().count //24500 : on perd beaucoup mais il reste suffisamment pour trouver un quartier interessant
+
+
+
+
+
+
+
+
+
+
+
+
+//requete qui renvoie les censusBlocks à moins de 1km d'un arret de métro
+db.subways.find().forEach(function(x){
+    db.censusBlocks.find(
+   {
+     "geometry": {
+         $near :
+          {
+            $geometry: x.geometry,
+            $minDistance: 0,
+            $maxDistance: 1000
+          }
+     }
+   }
+).forEach(function(y){
+        db.censusBlocksNearSubway.insert(y);
+    })
+})
+
+db.getCollection('censusBlocksNearSubway').stats().count //il y en a 128
+
+
+
+
+//parmi ceux proches d'un metro, on regarde lesquels intersectent un parc
+db.censusBlocksNearSubway.find().forEach(function(x){
+    var cb = x.geometry ;
+    db.parks.find(
+        {
+            "geometry": {
+                $geoIntersects :
+                {
+                    $geometry: cb
+                }
+            }
+        }
+    ).forEach(function(y){
+        db.censusBlocksNearSubwayAndPark.insert(x);
+        db.censusBlocksNearSubwayAndPark.update(
+            { "id" : x.id },
+            { $set: { "park" : y.name, "parkAcres" : y.acres } } 
+        );
+    })
+})
+
+db.censusBlocksNearSubwayAndPark.stats().count //la collection n'est pas vide, on va choisir le census bloc proche du parc le plus grand
+
+db.censusBlocksNearSubwayAndPark.find().sort({parkAcres:-1}).limit(1); //c'est dans ce bloc qu'on voudra habiter
+
+
+
+
+
+//stations de métros à moisn d'1km
+db.subways.find(
+   {
+     "geometry": {
+         $near :
+          {
+            $geometry: {
+          type: "Point" ,
+          coordinates: [ -73.9902736164793 , 40.7234260182932 ]
+       },
+            $minDistance: 0,
+            $maxDistance: 1000
+          }
+     }
+   }
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
