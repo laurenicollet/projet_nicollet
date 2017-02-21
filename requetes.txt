@@ -112,7 +112,7 @@ db.subways.find(
           coordinates: [ -73.9902736164793 , 40.7234260182932 ]
        },
             $minDistance: 0,
-            $maxDistance: 1000
+            $maxDistance: 1000 //remplacer 1000 par 500 pour tester dans un rayon plus court
           }
      }
    }
