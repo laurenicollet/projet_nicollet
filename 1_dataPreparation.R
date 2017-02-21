@@ -1,7 +1,6 @@
 install.packages("rjson", repos='http://cran.us.r-project.org')
 library("rjson")
 
-setwd("projet_nicollet")
 dir.create("data")
 
 #mise en forme des donnees subway
